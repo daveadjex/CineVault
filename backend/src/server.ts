@@ -15,6 +15,14 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);     // 2. Added secure account routing node block
 app.use('/api/movies', movieRoutes);
 
+app.get('/', (req, res) => {
+  res.json({
+    status: "active",
+    message: "Welcome to the CineVault API Engine Gateway",
+    timestamp: new Date()
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 CineVault Backend Server running securely on port ${PORT}`);
