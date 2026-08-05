@@ -1,0 +1,44 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/client"
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  history      WatchHistory[]
+  watchLater   WatchLater[]
+}
+
+model WatchHistory {
+  id               String   @id @default(uuid())
+  userId           String
+  tmdbId           Int      
+  stoppedAtSeconds Float    
+  durationSeconds  Float    
+  isFinished       Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId])
+}
+
+model WatchLater {
+  id        String   @id @default(uuid())
+  userId    String
+  tmdbId    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId])
+}
