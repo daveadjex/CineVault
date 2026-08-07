@@ -1,50 +1,72 @@
 "use client";
+
 import { useState, useRef, useCallback } from "react";
 
 interface UseMovieTrailerOptions {
   movieId: number;
   delayMs?: number;
-  defaultVideoKey?: string;
 }
+
+// Global memory cache
+const trailerCache = new Map<number, string | null>();
 
 export function useMovieTrailer({
   movieId,
-  delayMs = 300,
-  defaultVideoKey = "dQw4w9WgXcQ",
+  delayMs = 500,
 }: UseMovieTrailerOptions) {
   const [isHovered, setIsHovered] = useState(false);
   const [videoKey, setVideoKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchTrailer = useCallback(async () => {
-    if (videoKey) return; // Prevent duplicate requests if already cached in state
+    // Already cached
+    if (trailerCache.has(movieId)) {
+      setVideoKey(trailerCache.get(movieId) ?? null);
+      return;
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+
+    if (!apiKey) {
+      console.warn("Missing TMDB API key");
+      return;
+    }
 
     setIsLoading(true);
+
     try {
-      const apiKey =
-        process.env.TMDB_API_KEY || process.env.NEXT_PUBLIC_TMDB_API_KEY;
-      const res = await fetch(
-        `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${apiKey}`
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/${movieId}/videos?api_key=${apiKey}&language=en-US`
       );
-      
-      if (!res.ok) throw new Error("Failed to fetch");
 
-      const data = await res.json();
+      if (!response.ok) {
+        throw new Error("TMDB request failed");
+      }
+
+      const data = await response.json();
+
       const trailer = data.results?.find(
-        (v: any) => v.type === "Trailer" && v.site === "YouTube"
+        (video: any) =>
+          video.site === "YouTube" && video.type === "Trailer"
       );
 
-      setVideoKey(trailer ? trailer.key : defaultVideoKey);
-    } catch {
-      setVideoKey(defaultVideoKey);
+      const key = trailer?.key ?? null;
+
+      trailerCache.set(movieId, key);
+      setVideoKey(key);
+    } catch (error) {
+      console.error("Trailer fetch failed", error);
+      trailerCache.set(movieId, null);
     } finally {
       setIsLoading(false);
     }
-  }, [movieId, videoKey, defaultVideoKey]);
+  }, [movieId]);
 
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);
+
     timerRef.current = setTimeout(() => {
       fetchTrailer();
     }, delayMs);
@@ -52,6 +74,7 @@ export function useMovieTrailer({
 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
+
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;

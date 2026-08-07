@@ -6,111 +6,113 @@ import MovieHoverCard from "./MovieHoverCard";
 interface Movie {
   id: number;
   title: string;
+  overview?: string;
+  poster_path?: string;
+  backdrop_path?: string;
   genre_ids?: number[];
-  genres?: { id: number; name: string }[] | string[];
+  vote_average?: number;
+  release_date?: string;
   [key: string]: any;
 }
 
 interface SectionProps {
   title: string;
   movies: Movie[];
+  onWatchLater?: (movie: Movie) => void;
 }
 
-const GENRE_ROW_LIST = [
-  "All",
-  "Action",
-  "Adventure",
-  "Biography",
-  "Crime",
-  "Comedy",
-  "Documentary",
-  "Drama",
+const GENRES = [
+  { name: "All", id: null },
+  { name: "Action", id: 28 },
+  { name: "Adventure", id: 12 },
+  { name: "Animation", id: 16 },
+  { name: "Comedy", id: 35 },
+  { name: "Crime", id: 80 },
+  { name: "Documentary", id: 99 },
+  { name: "Drama", id: 18 },
+  { name: "Horror", id: 27 },
 ];
 
-export default function MediaGridSection({ title, movies }: SectionProps) {
-  const [selectedGenre, setSelectedGenre] = useState<string>("All");
+export default function MediaGridSection({
+  title,
+  movies,
+  onWatchLater,
+}: SectionProps) {
+  const [selectedGenre, setSelectedGenre] = useState("All");
 
-  // Filter movies dynamically based on active selected pill
+  const activeGenre = GENRES.find((genre) => genre.name === selectedGenre);
+
   const filteredMovies =
-    selectedGenre === "All"
+    activeGenre?.id === null
       ? movies
-      : movies.filter((movie) => {
-          if (!movie.genres && !movie.genre_ids) return true;
-          if (Array.isArray(movie.genres)) {
-            return movie.genres.some((g) =>
-              typeof g === "string"
-                ? g.toLowerCase() === selectedGenre.toLowerCase()
-                : g.name?.toLowerCase() === selectedGenre.toLowerCase()
-            );
-          }
-          return true;
-        });
+      : movies.filter((movie) =>
+          movie.genre_ids?.includes(activeGenre?.id ?? 0)
+        );
 
   return (
-    <section className="space-y-6">
-      {/* Modernized Section Header */}
-      <div className="flex items-center justify-between border-b border-border/20 pb-3">
-        <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground uppercase flex items-center gap-3">
-          <span className="text-primary animate-pulse">⚡</span>
-          <span>{title}</span>
-        </h2>
-        
-        {/* Real-time movie count pill */}
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted/50 border border-border/40 text-muted-foreground">
-          {filteredMovies.length} Items
-        </span>
+    <section className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="flex items-center gap-2 text-xl md:text-2xl font-black uppercase tracking-tight text-foreground">
+            <span>⚡</span>
+            {title}
+          </h2>
+
+          <span className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-bold text-muted-foreground">
+            {filteredMovies.length}
+          </span>
+        </div>
       </div>
 
-      {/* Interactive Category Filter Bar with Fade Masks */}
-      <div className="relative group/scroll">
-        {/* Left Fade Overlay */}
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none opacity-0 group-hover/scroll:opacity-100 transition-opacity" />
-        
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 scroll-smooth">
-          {GENRE_ROW_LIST.map((genre) => {
-            const isActive = selectedGenre === genre;
+      {/* Genre Selector */}
+      <div className="relative">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
+          {GENRES.map((genre) => {
+            const active = selectedGenre === genre.name;
+
             return (
               <button
-                key={genre}
-                onClick={() => setSelectedGenre(genre)}
-                className={`relative text-xs px-4 py-2 rounded-full font-bold transition-all duration-300 cursor-pointer whitespace-nowrap active:scale-95 ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 border-transparent"
-                    : "bg-card text-muted-foreground border border-border/40 hover:border-border hover:text-foreground hover:bg-accent/50"
+                key={genre.name}
+                onClick={() => setSelectedGenre(genre.name)}
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all active:scale-95 ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                {genre}
+                {genre.name}
               </button>
             );
           })}
         </div>
-
-        {/* Right Fade Overlay */}
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       </div>
 
-      {/* Grid Layout Container */}
+      {/* Movie Grid */}
       {filteredMovies.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
           {filteredMovies.map((movie, index) => (
             <div
               key={movie.id}
-              className="animate-in fade-in zoom-in-95 duration-500 fill-mode-both"
-              style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
+              className="animate-in fade-in zoom-in-95 duration-500"
+              style={{
+                animationDelay: `${Math.min(index * 40, 300)}ms`,
+              }}
             >
-              <MovieHoverCard movie={movie} />
+              <MovieHoverCard movie={movie} onWatchLater={onWatchLater} />
             </div>
           ))}
         </div>
       ) : (
-        /* Empty Filter State */
-        <div className="h-44 w-full rounded-xl border border-dashed border-border/40 bg-card/50 flex flex-col items-center justify-center text-center p-6 space-y-2">
+        <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 text-center">
           <p className="text-sm font-semibold text-muted-foreground">
-            No movies found for <span className="text-primary font-bold">"{selectedGenre}"</span>
+            No movies found for{" "}
+            <span className="text-primary font-bold">"{selectedGenre}"</span>
           </p>
+
           <button
             onClick={() => setSelectedGenre("All")}
-            className="text-xs text-primary underline underline-offset-4 hover:text-primary/80 font-bold cursor-pointer"
+            className="mt-2 text-xs font-bold text-primary underline"
           >
             Reset filter
           </button>
